@@ -1,8 +1,20 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Lock, Maximize2, Minimize2, Sparkles, Volume2, VolumeX, X } from 'lucide-react';
-import type { GameDefinition } from '../../types/game';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Maximize2,
+  Minimize2,
+  Sparkles,
+  Volume2,
+  VolumeX,
+  X,
+} from 'lucide-react';
+import { GAME_CATEGORIES, type GameDefinition } from '../../types/game';
 import { useSound } from '../../context/SoundContext';
+import { useGrade } from '../../context/GradeContext';
 import { useFullscreen } from '../../hooks/useFullscreen';
+import { GradeBadgeToggle } from '../shared/GradeBadgeToggle';
 
 interface SidebarProps {
   games: GameDefinition[];
@@ -24,6 +36,7 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const { isMuted, toggleMute, playClick } = useSound();
+  const { grade, toggleGrade } = useGrade();
   const { isFullscreen, isSupported: isFullscreenSupported, toggleFullscreen } = useFullscreen();
 
   const handleSelect = (game: GameDefinition) => {
@@ -36,9 +49,13 @@ export function Sidebar({
   const renderContent = (compact: boolean, showCloseButton: boolean) => (
     <div className="flex h-full flex-col bg-white/95 backdrop-blur-md border-r-2 border-amber-100/90 shadow-sm">
       {/* En-tête du portail */}
-      <div className={`flex items-center ${compact ? 'justify-center px-2' : 'justify-between px-4'} h-20 shrink-0 border-b border-amber-100`}>
+      <div
+        className={`flex items-center ${
+          compact ? 'justify-center px-2' : 'justify-between px-4'
+        } h-18 shrink-0 border-b border-amber-100`}
+      >
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-2xl shadow-md shadow-orange-200">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-2xl shadow-md shadow-orange-200">
             🎮
           </div>
           {!compact && (
@@ -47,7 +64,7 @@ export function Sidebar({
                 Jeux Enfant
               </h1>
               <p className="text-xs font-bold text-amber-700/80 truncate">
-                Salle de jeux
+                {games.length} jeux disponibles
               </p>
             </div>
           )}
@@ -61,83 +78,118 @@ export function Sidebar({
               onCloseMobile();
             }}
             aria-label="Fermer le menu"
-            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95 transition focus-visible:outline-2 focus-visible:outline-orange-500"
+            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95 transition focus-visible:outline-2 focus-visible:outline-orange-500"
           >
             <X className="h-6 w-6" />
           </button>
         )}
       </div>
 
-      {/* Liste des jeux (scroll indépendant) */}
-      <nav aria-label="Liste des jeux" className="flex-1 overflow-y-auto px-3 py-4 space-y-2.5">
-        {!compact && (
-          <p className="px-2 pb-1 text-xs font-extrabold uppercase tracking-wider text-amber-800/60">
-            Mes Jeux
-          </p>
+      {/* Sélecteur global 1re année / 3e année */}
+      <div className={`shrink-0 border-b border-amber-100 ${compact ? 'p-2 flex justify-center' : 'px-3 py-2.5'}`}>
+        {compact ? (
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              toggleGrade();
+            }}
+            title={`Niveau : ${grade} année (cliquer pour changer)`}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-xl hover:bg-amber-200 active:scale-95 transition"
+          >
+            {grade === '1re' ? '🐣' : '🦁'}
+          </button>
+        ) : (
+          <GradeBadgeToggle compact />
         )}
+      </div>
 
-        {games.map((game) => {
-          const isActive = game.id === activeGameId;
-          const isReady = game.status === 'ready';
+      {/* Liste des jeux regroupés par catégories (scroll indépendant) */}
+      <nav aria-label="Liste des jeux par catégorie" className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        {GAME_CATEGORIES.map((category) => {
+          const categoryGames = games.filter((g) => g.category === category.id);
+          if (categoryGames.length === 0) return null;
 
           return (
-            <button
-              key={game.id}
-              type="button"
-              disabled={!isReady}
-              onClick={() => handleSelect(game)}
-              title={compact ? game.name : undefined}
-              className={`group relative flex w-full items-center ${
-                compact ? 'justify-center p-2' : 'gap-3.5 px-3.5 py-3'
-              } rounded-2xl text-left transition-all duration-150 focus-visible:outline-2 focus-visible:outline-orange-500 ${
-                isActive
-                  ? 'bg-gradient-to-r from-amber-100 to-orange-100/90 text-amber-950 shadow-sm ring-2 ring-orange-400/70'
-                  : isReady
-                  ? 'bg-amber-50/50 text-amber-900 hover:bg-amber-100/70 active:scale-[0.98]'
-                  : 'bg-stone-100/70 text-stone-400 cursor-not-allowed opacity-75'
-              }`}
-            >
-              <span
-                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl shadow-sm transition-transform ${
-                  isReady ? `${game.accentBg} group-hover:scale-105` : 'bg-stone-200 grayscale'
-                }`}
-              >
-                {game.icon}
-              </span>
+            <div key={category.id} className="space-y-1.5">
+              {!compact ? (
+                <p className={`flex items-center gap-1.5 px-2 pt-0.5 text-[11px] font-extrabold uppercase tracking-wider ${category.accentClass}`}>
+                  <span aria-hidden="true">{category.icon}</span>
+                  <span>{category.label}</span>
+                </p>
+              ) : (
+                <div className="my-1 border-t border-amber-100/80 first:hidden" />
+              )}
 
-              {!compact && (
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-display text-base font-bold truncate">
-                      {game.name}
+              {categoryGames.map((game) => {
+                const isActive = game.id === activeGameId;
+                const isReady = game.status === 'ready';
+
+                return (
+                  <button
+                    key={game.id}
+                    type="button"
+                    disabled={!isReady}
+                    onClick={() => handleSelect(game)}
+                    title={compact ? `${game.name} (${category.label})` : undefined}
+                    className={`group relative flex w-full items-center ${
+                      compact ? 'justify-center p-1.5' : 'gap-3 px-3 py-2.5'
+                    } rounded-2xl text-left transition-all duration-150 focus-visible:outline-2 focus-visible:outline-orange-500 ${
+                      isActive
+                        ? 'bg-gradient-to-r from-amber-100 to-orange-100/90 text-amber-950 shadow-sm ring-2 ring-orange-400/70'
+                        : isReady
+                        ? 'bg-amber-50/40 text-amber-900 hover:bg-amber-100/70 active:scale-[0.98]'
+                        : 'bg-stone-100/70 text-stone-400 cursor-not-allowed opacity-75'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl shadow-xs transition-transform ${
+                        isReady ? `${game.accentBg} group-hover:scale-105` : 'bg-stone-200 grayscale'
+                      }`}
+                    >
+                      {game.icon}
                     </span>
-                    {isActive && (
-                      <Sparkles className="h-4 w-4 shrink-0 text-orange-500" />
-                    )}
-                  </div>
-                  <p className="text-xs font-semibold opacity-75 truncate">
-                    {isReady ? game.shortDescription : 'Bientôt disponible'}
-                  </p>
-                </div>
-              )}
 
-              {!compact && !isReady && (
-                <Lock className="h-4 w-4 shrink-0 text-stone-400" />
-              )}
-            </button>
+                    {!compact && (
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-display text-sm font-bold truncate">
+                            {game.name}
+                          </span>
+                          {isActive && (
+                            <Sparkles className="h-3.5 w-3.5 shrink-0 text-orange-500" />
+                          )}
+                        </div>
+                        <p className="text-[11px] font-semibold opacity-75 truncate">
+                          {isReady ? game.shortDescription : 'Bientôt disponible'}
+                        </p>
+                      </div>
+                    )}
+
+                    {!compact && !isReady && (
+                      <Lock className="h-4 w-4 shrink-0 text-stone-400" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           );
         })}
       </nav>
 
       {/* Pied de menu : Son + Plein écran + Replier (desktop/paysage) */}
-      <div className={`shrink-0 border-t border-amber-100 p-3 flex ${compact ? 'flex-col items-center gap-2' : 'items-center justify-between gap-2'}`}>
+      <div
+        className={`shrink-0 border-t border-amber-100 p-3 flex ${
+          compact ? 'flex-col items-center gap-2' : 'items-center justify-between gap-2'
+        }`}
+      >
         <button
           type="button"
           onClick={toggleMute}
           aria-label={isMuted ? 'Activer le son' : 'Couper le son'}
           title={isMuted ? 'Activer le son' : 'Couper le son'}
-          className={`flex items-center justify-center gap-2.5 rounded-2xl font-bold transition active:scale-95 focus-visible:outline-2 focus-visible:outline-orange-500 ${
-            compact ? 'h-12 w-12' : 'h-12 flex-1 px-4'
+          className={`flex items-center justify-center gap-2 rounded-2xl font-bold transition active:scale-95 focus-visible:outline-2 focus-visible:outline-orange-500 ${
+            compact ? 'h-11 w-11' : 'h-11 flex-1 px-3'
           } ${
             isMuted
               ? 'bg-stone-100 text-stone-500 hover:bg-stone-200'
@@ -145,7 +197,7 @@ export function Sidebar({
           }`}
         >
           {isMuted ? <VolumeX className="h-5 w-5 shrink-0" /> : <Volume2 className="h-5 w-5 shrink-0" />}
-          {!compact && <span className="text-sm">{isMuted ? 'Son coupé' : 'Son activé'}</span>}
+          {!compact && <span className="text-xs font-extrabold">{isMuted ? 'Son coupé' : 'Son activé'}</span>}
         </button>
 
         {isFullscreenSupported && (
@@ -157,7 +209,7 @@ export function Sidebar({
             }}
             aria-label={isFullscreen ? 'Quitter le plein écran' : 'Passer en plein écran'}
             title={isFullscreen ? 'Quitter le plein écran' : 'Passer en plein écran'}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95 transition focus-visible:outline-2 focus-visible:outline-orange-500"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95 transition focus-visible:outline-2 focus-visible:outline-orange-500"
           >
             {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
           </button>
@@ -172,7 +224,7 @@ export function Sidebar({
             }}
             aria-label={compact ? 'Déplier le menu' : 'Replier le menu'}
             title={compact ? 'Déplier le menu' : 'Replier le menu'}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95 transition focus-visible:outline-2 focus-visible:outline-orange-500"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95 transition focus-visible:outline-2 focus-visible:outline-orange-500"
           >
             {compact ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
           </button>
