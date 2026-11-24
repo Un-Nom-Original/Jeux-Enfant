@@ -15,8 +15,8 @@ export const GAMES_REGISTRY: GameDefinition[] = [
   },
   {
     id: 'piano-tiles',
-    name: 'Piano Tiles',
-    shortDescription: 'KPop Demon Hunters',
+    name: 'Piano',
+    shortDescription: 'Joue en rythme !',
     icon: '🎹',
     accentBg: 'bg-gradient-to-br from-fuchsia-400 to-cyan-300',
     accentText: 'text-white',

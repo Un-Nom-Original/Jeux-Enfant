@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PianoStage } from './PianoStage';
 import { SongSelector } from './SongSelector';
-import { KPOP_SONGS } from './songs';
+import { PIANO_SONGS } from './songs';
 import {
   loadAllRecords,
   loadSavedDifficulty,
@@ -55,13 +55,13 @@ export function GamePianoTiles() {
   );
 
   const currentSongIndex = selectedSong
-    ? KPOP_SONGS.findIndex((s) => s.id === selectedSong.id)
+    ? PIANO_SONGS.findIndex((s) => s.id === selectedSong.id)
     : -1;
-  const hasNextSong = currentSongIndex >= 0 && currentSongIndex < KPOP_SONGS.length - 1;
+  const hasNextSong = currentSongIndex >= 0 && currentSongIndex < PIANO_SONGS.length - 1;
 
   const handleNextSong = useCallback(() => {
-    if (currentSongIndex >= 0 && currentSongIndex < KPOP_SONGS.length - 1) {
-      setSelectedSong(KPOP_SONGS[currentSongIndex + 1]);
+    if (currentSongIndex >= 0 && currentSongIndex < PIANO_SONGS.length - 1) {
+      setSelectedSong(PIANO_SONGS[currentSongIndex + 1]);
     }
   }, [currentSongIndex]);
 

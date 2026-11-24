@@ -641,7 +641,7 @@ export function PianoStage({
                     }}
                     className="h-10 w-full rounded-xl text-sm font-bold text-purple-200 hover:text-white transition"
                   >
-                    Liste des 13 chansons
+                    Liste des chansons
                   </button>
                 </div>
               </div>

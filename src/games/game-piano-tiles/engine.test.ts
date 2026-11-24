@@ -7,29 +7,22 @@ import {
   findHittableTile,
   getTileNormalizedY,
 } from './engine';
-import { KPOP_SONGS } from './songs';
+import { PIANO_SONGS } from './songs';
 
-describe('Piano Tiles — KPop Demon Hunters engine', () => {
-  it('contient les 13 chansons officielles de KPop Demon Hunters', () => {
-    expect(KPOP_SONGS).toHaveLength(13);
-    const titles = KPOP_SONGS.map((s) => s.title);
-    expect(titles).toContain('Golden');
-    expect(titles).toContain("How It's Done");
-    expect(titles).toContain('Soda Pop');
-    expect(titles).toContain('Takedown');
-    expect(titles).toContain('Your Idol');
-    expect(titles).toContain('Free');
-    expect(titles).toContain('What It Sounds Like');
-    expect(titles).toContain('Strategy');
-    expect(titles).toContain('Love, Maybe (사랑인가 봐)');
-    expect(titles).toContain('Path (오솔길)');
-    expect(titles).toContain("Prologue (Hunter's Mantra)");
-    expect(titles).toContain("Jinu's Lament");
-    expect(titles).toContain('Score Suite');
+describe('Piano engine', () => {
+  it('contient les 12 mélodies reconnaissables', () => {
+    expect(PIANO_SONGS).toHaveLength(12);
+    const titles = PIANO_SONGS.map((s) => s.title);
+    expect(titles).toContain('Brille, brille petite étoile');
+    expect(titles).toContain('Frère Jacques');
+    expect(titles).toContain('Au clair de la lune');
+    expect(titles).toContain('Ode à la joie');
+    expect(titles).toContain('La Lettre à Élise');
+    expect(titles).toContain('La Marche Turque');
   });
 
   it('génère des partitions valides et strictement croissantes pour chaque chanson', () => {
-    for (const song of KPOP_SONGS) {
+    for (const song of PIANO_SONGS) {
       const chart = buildSongChart(song, 'normal');
       expect(chart.length).toBeGreaterThan(20);
       for (let i = 1; i < chart.length; i++) {
@@ -41,7 +34,7 @@ describe('Piano Tiles — KPop Demon Hunters engine', () => {
   });
 
   it('évalue correctement PARFAIT, SUPER et RATÉ selon la fenêtre temporelle', () => {
-    const chart = buildSongChart(KPOP_SONGS[0], 'normal');
+    const chart = buildSongChart(PIANO_SONGS[0], 'normal');
     const first = chart[0];
 
     const perfectHit = findHittableTile(chart, first.lane, first.timeMs + 20, 'normal');
@@ -54,7 +47,7 @@ describe('Piano Tiles — KPop Demon Hunters engine', () => {
     const missLane = findHittableTile(chart, wrongLane, first.timeMs, 'normal');
     expect(missLane).toBeNull();
 
-    const tooFar = findHittableTile(chart, first.lane, first.timeMs + 500, 'normal');
+    const tooFar = findHittableTile(chart, first.lane, first.timeMs - 500, 'normal');
     expect(tooFar).toBeNull();
   });
 

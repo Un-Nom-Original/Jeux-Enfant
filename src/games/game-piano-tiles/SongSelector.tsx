@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Music, Play, Sparkles, Star, Upload } from 'lucide-react';
 import { useSound } from '../../context/SoundContext';
 import { DIFFICULTY_CONFIGS } from './engine';
-import { KPOP_SONGS } from './songs';
+import { PIANO_SONGS } from './songs';
 import { getSongRecord } from './storage';
 import type { Difficulty, GroupTheme, SongDefinition, SongRecord } from './types';
 
@@ -53,14 +53,14 @@ export function SongSelector({
 
   const filteredSongs =
     groupFilter === 'all'
-      ? KPOP_SONGS
-      : KPOP_SONGS.filter((song) => song.group === groupFilter);
+      ? PIANO_SONGS
+      : PIANO_SONGS.filter((song) => song.group === groupFilter);
 
-  const totalStars = KPOP_SONGS.reduce(
+  const totalStars = PIANO_SONGS.reduce(
     (sum, song) => sum + getSongRecord(records, song.id, difficulty).stars,
     0
   );
-  const maxStars = KPOP_SONGS.length * 3;
+  const maxStars = PIANO_SONGS.length * 3;
 
   const triggerUpload = (e: React.MouseEvent, songId: string) => {
     e.stopPropagation();
@@ -89,7 +89,7 @@ export function SongSelector({
         className="hidden"
       />
 
-      {/* En-tête Concert KPop Demon Hunters */}
+      {/* En-tête Piano */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
         <div className="flex items-center gap-3">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-fuchsia-500 to-cyan-400 text-3xl shadow-lg shadow-fuchsia-500/30">
@@ -98,15 +98,15 @@ export function SongSelector({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                Piano Tiles
+                Piano
               </h2>
               <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/20 to-fuchsia-500/25 px-2.5 py-0.5 text-xs font-extrabold text-amber-200 border border-amber-300/40">
                 <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                KPop Demon Hunters
+                12 Mélodies
               </span>
             </div>
             <p className="mt-0.5 text-xs sm:text-sm font-semibold text-purple-200/80">
-              Choisis une chanson parmi les 13 titres du film et touche les tuiles en rythme !
+              Choisis une chanson et touche les tuiles lumineuses en rythme !
             </p>
           </div>
         </div>
@@ -120,7 +120,7 @@ export function SongSelector({
         </div>
       </div>
 
-      {/* Contrôles : Difficulté + Filtre par groupe */}
+      {/* Contrôles : Difficulté + Filtre par catégorie */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Sélecteur de difficulté */}
         <div
@@ -152,14 +152,14 @@ export function SongSelector({
           })}
         </div>
 
-        {/* Filtres par groupe */}
+        {/* Filtres par style */}
         <div className="flex flex-wrap items-center gap-1.5">
           {(
             [
-              { id: 'all', label: `Toutes (${KPOP_SONGS.length})` },
-              { id: 'huntrx', label: '✨ HUNTR/X' },
-              { id: 'saja', label: '🔥 Saja Boys' },
-              { id: 'pop', label: '💖 TWICE & OST' },
+              { id: 'all', label: `Toutes (${PIANO_SONGS.length})` },
+              { id: 'pop', label: '⭐ Comptines' },
+              { id: 'huntrx', label: '🎻 Classiques' },
+              { id: 'saja', label: '⚡ Pop & Arcade' },
             ] as Array<{ id: GroupFilter; label: string }>
           ).map((tab) => {
             const active = groupFilter === tab.id;
