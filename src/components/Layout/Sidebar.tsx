@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Lock, Sparkles, Volume2, VolumeX, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lock, Maximize2, Minimize2, Sparkles, Volume2, VolumeX, X } from 'lucide-react';
 import type { GameDefinition } from '../../types/game';
 import { useSound } from '../../context/SoundContext';
+import { useFullscreen } from '../../hooks/useFullscreen';
 
 interface SidebarProps {
   games: GameDefinition[];
@@ -23,6 +24,7 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const { isMuted, toggleMute, playClick } = useSound();
+  const { isFullscreen, isSupported: isFullscreenSupported, toggleFullscreen } = useFullscreen();
 
   const handleSelect = (game: GameDefinition) => {
     if (game.status !== 'ready') return;
@@ -127,7 +129,7 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Pied de menu : Son + Replier (desktop/paysage) */}
+      {/* Pied de menu : Son + Plein écran + Replier (desktop/paysage) */}
       <div className={`shrink-0 border-t border-amber-100 p-3 flex ${compact ? 'flex-col items-center gap-2' : 'items-center justify-between gap-2'}`}>
         <button
           type="button"
@@ -145,6 +147,21 @@ export function Sidebar({
           {isMuted ? <VolumeX className="h-5 w-5 shrink-0" /> : <Volume2 className="h-5 w-5 shrink-0" />}
           {!compact && <span className="text-sm">{isMuted ? 'Son coupé' : 'Son activé'}</span>}
         </button>
+
+        {isFullscreenSupported && (
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              toggleFullscreen();
+            }}
+            aria-label={isFullscreen ? 'Quitter le plein écran' : 'Passer en plein écran'}
+            title={isFullscreen ? 'Quitter le plein écran' : 'Passer en plein écran'}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95 transition focus-visible:outline-2 focus-visible:outline-orange-500"
+          >
+            {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+          </button>
+        )}
 
         {!showCloseButton && (
           <button

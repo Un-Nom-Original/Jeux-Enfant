@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
-import { Menu, Volume2, VolumeX } from 'lucide-react';
+import { Maximize2, Menu, Minimize2, Volume2, VolumeX } from 'lucide-react';
 import type { GameDefinition } from '../../types/game';
 import { useSound } from '../../context/SoundContext';
+import { useFullscreen } from '../../hooks/useFullscreen';
 import { Sidebar } from './Sidebar';
 
 interface AppShellProps {
@@ -15,6 +16,7 @@ export function AppShell({ games, activeGame, onSelectGame, children }: AppShell
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { isMuted, toggleMute, playClick } = useSound();
+  const { isFullscreen, isSupported: isFullscreenSupported, toggleFullscreen } = useFullscreen();
 
   return (
     <div className="flex min-h-dvh w-full bg-[#FFF8EE] text-[#2D241E] overflow-x-hidden">
@@ -52,18 +54,35 @@ export function AppShell({ games, activeGame, onSelectGame, children }: AppShell
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={toggleMute}
-            aria-label={isMuted ? 'Activer le son' : 'Couper le son'}
-            className={`flex h-12 w-12 items-center justify-center rounded-2xl transition active:scale-95 focus-visible:outline-2 focus-visible:outline-orange-500 ${
-              isMuted
-                ? 'bg-stone-100 text-stone-500'
-                : 'bg-emerald-100 text-emerald-800'
-            }`}
-          >
-            {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-1.5">
+            {isFullscreenSupported && (
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  toggleFullscreen();
+                }}
+                aria-label={isFullscreen ? 'Quitter le plein écran' : 'Passer en plein écran'}
+                title={isFullscreen ? 'Quitter le plein écran' : 'Passer en plein écran'}
+                className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95 transition focus-visible:outline-2 focus-visible:outline-orange-500"
+              >
+                {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={toggleMute}
+              aria-label={isMuted ? 'Activer le son' : 'Couper le son'}
+              className={`flex h-12 w-12 items-center justify-center rounded-2xl transition active:scale-95 focus-visible:outline-2 focus-visible:outline-orange-500 ${
+                isMuted
+                  ? 'bg-stone-100 text-stone-500'
+                  : 'bg-emerald-100 text-emerald-800'
+              }`}
+            >
+              {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            </button>
+          </div>
         </header>
 
         {/* Zone principale du jeu */}
