@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fredoka", "Nunito", ui-rounded, system-ui, sans-serif;
+  --font-sans: "Nunito", ui-rounded, system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #FFF8EE;
+    color: #2D241E;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+@keyframes tile-glow {
+  0%, 100% {
+    box-shadow: 0 0 14px rgba(250, 204, 21, 0.55), 0 4px 0 rgba(180, 83, 9, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(250, 204, 21, 0.9), 0 4px 0 rgba(180, 83, 9, 0.45);
+  }
+}
+
+.animate-tile-glow {
+  animation: tile-glow 2s ease-in-out infinite;
+}
+
+@keyframes rainbow-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.bg-tile-rainbow {
+  background: linear-gradient(135deg, #F472B6, #C084FC, #38BDF8, #34D399, #FACC15);
+  background-size: 260% 260%;
+  animation: rainbow-shift 4s ease infinite;
+}
