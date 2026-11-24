@@ -1,4 +1,5 @@
 import { Game2048 } from './game-2048/Game2048';
+import { GamePianoTiles } from './game-piano-tiles/GamePianoTiles';
 import type { GameDefinition } from '../types/game';
 
 export const GAMES_REGISTRY: GameDefinition[] = [
@@ -11,6 +12,16 @@ export const GAMES_REGISTRY: GameDefinition[] = [
     accentText: 'text-amber-950',
     status: 'ready',
     component: Game2048,
+  },
+  {
+    id: 'piano-tiles',
+    name: 'Piano Tiles',
+    shortDescription: 'KPop Demon Hunters',
+    icon: '🎹',
+    accentBg: 'bg-gradient-to-br from-fuchsia-400 to-cyan-300',
+    accentText: 'text-white',
+    status: 'ready',
+    component: GamePianoTiles,
   },
   {
     id: 'memory',
