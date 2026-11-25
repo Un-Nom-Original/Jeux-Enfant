@@ -15,6 +15,7 @@ const GameSudoku = lazy(() => import('./game-sudoku/GameSudoku'));
 const GameSimon = lazy(() => import('./game-simon/GameSimon'));
 const GameTicTacToe = lazy(() => import('./game-tic-tac-toe/GameTicTacToe'));
 const GameConnectFour = lazy(() => import('./game-connect-four/GameConnectFour'));
+const GameMotherload = lazy(() => import('./game-motherload/GameMotherload'));
 
 export const GAMES_REGISTRY: GameDefinition[] = [
   // 🔤 FRANÇAIS
@@ -177,5 +178,16 @@ export const GAMES_REGISTRY: GameDefinition[] = [
     accentText: 'text-blue-950',
     status: 'ready',
     component: GameConnectFour,
+  },
+  {
+    id: 'motherload',
+    name: 'Mini-Motherload',
+    shortDescription: 'Forage sur Mars !',
+    category: 'jeux',
+    icon: '⛏️',
+    accentBg: 'bg-orange-300/90',
+    accentText: 'text-orange-950',
+    status: 'ready',
+    component: GameMotherload,
   },
 ];
