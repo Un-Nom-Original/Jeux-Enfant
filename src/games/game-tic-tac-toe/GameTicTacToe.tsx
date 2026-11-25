@@ -174,8 +174,8 @@ export function GameTicTacToe() {
         </div>
       </div>
 
-      {/* Grille 3x3 */}
-      <div className="grid aspect-square w-full max-w-[min(86vw,360px)] grid-cols-3 gap-3 rounded-3xl bg-amber-200/80 p-3 shadow-md border-4 border-amber-300">
+      {/* Grille 3x3 à dimensions fixes */}
+      <div className="grid aspect-square w-full max-w-[min(86vw,360px)] grid-cols-3 grid-rows-3 gap-3 rounded-3xl bg-amber-200/80 p-3 shadow-md border-4 border-amber-300">
         {board.map((cell, idx) => {
           const isWinCell = winInfo?.line.includes(idx);
           return (
@@ -183,13 +183,15 @@ export function GameTicTacToe() {
               key={idx}
               type="button"
               onClick={() => handleCellClick(idx)}
-              className={`flex items-center justify-center rounded-2xl font-display text-5xl sm:text-6xl font-bold shadow-xs transition active:scale-95 ${
+              className={`aspect-square h-full w-full min-h-0 min-w-0 flex items-center justify-center rounded-2xl font-display text-5xl sm:text-6xl font-bold leading-none shadow-xs transition active:scale-95 ${
                 isWinCell
                   ? 'bg-emerald-300 scale-[1.03]'
                   : 'bg-white hover:bg-amber-50'
               }`}
             >
-              {cell === 'X' ? '❌' : cell === 'O' ? '⭕' : ''}
+              <span className="leading-none select-none">
+                {cell === 'X' ? '❌' : cell === 'O' ? '⭕' : '\u00A0'}
+              </span>
             </button>
           );
         })}

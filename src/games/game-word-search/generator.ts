@@ -18,15 +18,21 @@ export interface WordSearchPuzzle {
 const FILL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUV';
 
 const DIRECTIONS_1RE: Array<[number, number]> = [
-  [0, 1], // Droite
-  [1, 0], // Bas
+  [0, 1],  // Horizontal gauche -> droite
+  [0, -1], // Horizontal droite -> gauche
+  [1, 0],  // Vertical haut -> bas
+  [-1, 0], // Vertical bas -> haut
 ];
 
 const DIRECTIONS_3E: Array<[number, number]> = [
-  [0, 1], // Droite
-  [1, 0], // Bas
-  [1, 1], // Diagonale bas-droite
-  [-1, 1], // Diagonale haut-droite
+  [0, 1],   // Horizontal gauche -> droite
+  [0, -1],  // Horizontal droite -> gauche
+  [1, 0],   // Vertical haut -> bas
+  [-1, 0],  // Vertical bas -> haut
+  [1, 1],   // Diagonale bas-droite
+  [-1, 1],  // Diagonale haut-droite
+  [1, -1],  // Diagonale bas-gauche
+  [-1, -1], // Diagonale haut-gauche
 ];
 
 function shuffle<T>(items: T[]): T[] {
@@ -60,8 +66,12 @@ export function generateWordSearch(grade: GradeLevel): WordSearchPuzzle {
     if (placed.length >= targetCount) break;
     let success = false;
 
-    for (let attempt = 0; attempt < 80 && !success; attempt++) {
-      const [dr, dc] = dirs[Math.floor(Math.random() * dirs.length)];
+    // Priorise une direction variée pour chaque mot afin d'avoir un vrai mélange H/V dans les deux sens
+    const preferredDir = dirs[placed.length % dirs.length];
+
+    for (let attempt = 0; attempt < 90 && !success; attempt++) {
+      const [dr, dc] =
+        attempt < 25 ? preferredDir : dirs[Math.floor(Math.random() * dirs.length)];
       const row = Math.floor(Math.random() * size);
       const col = Math.floor(Math.random() * size);
 

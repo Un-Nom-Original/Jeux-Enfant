@@ -18,7 +18,7 @@ export function GameSimon() {
 
   const [sequence, setSequence] = useState<number[]>([]);
   const [playerIndex, setPlayerIndex] = useState(0);
-  const [phase, setPhase] = useState<'idle' | 'showing' | 'input' | 'gameover'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'showing' | 'input' | 'success' | 'gameover'>('idle');
   const [activePad, setActivePad] = useState<number | null>(null);
   const [bestScore, setBestScore] = useState<number>(() => {
     try {
@@ -43,9 +43,9 @@ export function GameSimon() {
       setPhase('showing');
       setPlayerIndex(0);
 
-      const stepMs = Math.max(360, 680 - seq.length * 24);
+      const stepMs = Math.max(380, 680 - seq.length * 22);
       seq.forEach((padId, idx) => {
-        const start = 450 + idx * stepMs;
+        const start = 550 + idx * stepMs;
         timeoutsRef.current.push(
           window.setTimeout(() => {
             setActivePad(padId);
@@ -62,7 +62,7 @@ export function GameSimon() {
       timeoutsRef.current.push(
         window.setTimeout(() => {
           setPhase('input');
-        }, 450 + seq.length * stepMs + 100)
+        }, 550 + seq.length * stepMs + 140)
       );
     },
     [clearTimers]
@@ -109,9 +109,15 @@ export function GameSimon() {
         }
       }
 
+      // Pause claire entre le dernier clic du joueur et le tour suivant
+      setPhase('success');
       const nextSeq = [...sequence, Math.floor(Math.random() * 4)];
       setSequence(nextSeq);
-      playSequence(nextSeq);
+      timeoutsRef.current.push(
+        window.setTimeout(() => {
+          playSequence(nextSeq);
+        }, 1150)
+      );
     } else {
       setPlayerIndex(nextIdx);
     }
@@ -138,9 +144,14 @@ export function GameSimon() {
       </div>
 
       {/* Indicateur de phase */}
-      <div className="flex items-center gap-3 rounded-2xl bg-white px-5 py-2.5 shadow-sm border-2 border-amber-200">
-        <span className="font-display text-base font-bold text-amber-950">
+      <div className={`flex items-center gap-3 rounded-2xl px-5 py-2.5 shadow-sm border-2 transition-colors ${
+        phase === 'success'
+          ? 'bg-emerald-100 border-emerald-300 text-emerald-900'
+          : 'bg-white border-amber-200 text-amber-950'
+      }`}>
+        <span className="font-display text-base font-bold">
           {phase === 'idle' && 'Appuie sur Jouer pour commencer !'}
+          {phase === 'success' && '✅ Bravo ! Prépare-toi pour le tour suivant...'}
           {phase === 'showing' && '👀 Regarde et écoute bien...'}
           {phase === 'input' && `👉 À toi ! (${playerIndex}/${sequence.length})`}
           {phase === 'gameover' && `Oups ! Tu as retenu ${Math.max(0, sequence.length - 1)} notes !`}

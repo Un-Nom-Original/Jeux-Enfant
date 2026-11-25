@@ -6,6 +6,7 @@ import type { GameDefinition } from '../types/game';
 const GameHangman = lazy(() => import('./game-hangman/GameHangman'));
 const GameWordSearch = lazy(() => import('./game-word-search/GameWordSearch'));
 const GameAnagram = lazy(() => import('./game-anagram/GameAnagram'));
+const GameListenWord = lazy(() => import('./game-listen-word/GameListenWord'));
 const GameMathRace = lazy(() => import('./game-math-race/GameMathRace'));
 const GameLogicSequence = lazy(() => import('./game-logic-sequence/GameLogicSequence'));
 const GameMemory = lazy(() => import('./game-memory/GameMemory'));
@@ -17,6 +18,17 @@ const GameConnectFour = lazy(() => import('./game-connect-four/GameConnectFour')
 
 export const GAMES_REGISTRY: GameDefinition[] = [
   // 🔤 FRANÇAIS
+  {
+    id: 'listen-word',
+    name: 'Écoute & Trouve',
+    shortDescription: 'Écoute le mot en français',
+    category: 'francais',
+    icon: '🗣️',
+    accentBg: 'bg-indigo-200/90',
+    accentText: 'text-indigo-950',
+    status: 'ready',
+    component: GameListenWord,
+  },
   {
     id: 'hangman',
     name: 'Bonhomme Pendu',

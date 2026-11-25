@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getWordsForGrade, normalizeLetter } from './game-hangman/words';
 import { generateWordSearch, getLineCells } from './game-word-search/generator';
+import { generateListenRound } from './game-listen-word/words';
 import { generateMathQuestion } from './game-math-race/generator';
 import { generateSequenceQuestion } from './game-logic-sequence/generator';
 import { getSudokuPuzzles, isSudokuSolved } from './game-sudoku/puzzles';
@@ -75,5 +76,16 @@ describe('Suite complète des nouveaux jeux (1re & 3e année)', () => {
     const aiCol = chooseConnect4AiCol(createEmptyConnect4(), true);
     expect(aiCol).toBeGreaterThanOrEqual(0);
     expect(aiCol).toBeLessThan(7);
+  });
+
+  it('génère des manches Écoute & Trouve avec 3 choix dont la bonne réponse', () => {
+    for (const grade of ['1re', '3e'] as const) {
+      const round = generateListenRound(grade, 10);
+      expect(round).toHaveLength(10);
+      for (const q of round) {
+        expect(q.choices).toHaveLength(3);
+        expect(q.choices).toContain(q.target);
+      }
+    }
   });
 });
