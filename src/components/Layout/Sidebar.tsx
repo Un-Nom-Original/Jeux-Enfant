@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Lock,
@@ -10,7 +12,7 @@ import {
   VolumeX,
   X,
 } from 'lucide-react';
-import { GAME_CATEGORIES, type GameDefinition } from '../../types/game';
+import { GAME_CATEGORIES, type GameCategory, type GameDefinition } from '../../types/game';
 import { useSound } from '../../context/SoundContext';
 import { useGrade } from '../../context/GradeContext';
 import { useFullscreen } from '../../hooks/useFullscreen';
@@ -38,6 +40,12 @@ export function Sidebar({
   const { isMuted, toggleMute, playClick } = useSound();
   const { grade, toggleGrade } = useGrade();
   const { isFullscreen, isSupported: isFullscreenSupported, toggleFullscreen } = useFullscreen();
+  const [closedCategories, setClosedCategories] = useState<Partial<Record<GameCategory, boolean>>>({});
+
+  const toggleCategory = (catId: GameCategory) => {
+    playClick();
+    setClosedCategories((prev) => ({ ...prev, [catId]: !prev[catId] }));
+  };
 
   const handleSelect = (game: GameDefinition) => {
     if (game.status !== 'ready') return;
@@ -104,24 +112,40 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Liste des jeux regroupés par catégories (scroll indépendant) */}
-      <nav aria-label="Liste des jeux par catégorie" className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+      {/* Liste des jeux regroupés par catégories repliables (scroll indépendant) */}
+      <nav aria-label="Liste des jeux par catégorie" className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
         {GAME_CATEGORIES.map((category) => {
           const categoryGames = games.filter((g) => g.category === category.id);
           if (categoryGames.length === 0) return null;
+          const isCatClosed = !compact && Boolean(closedCategories[category.id]);
 
           return (
             <div key={category.id} className="space-y-1.5">
               {!compact ? (
-                <p className={`flex items-center gap-1.5 px-2 pt-0.5 text-[11px] font-extrabold uppercase tracking-wider ${category.accentClass}`}>
-                  <span aria-hidden="true">{category.icon}</span>
-                  <span>{category.label}</span>
-                </p>
+                <button
+                  type="button"
+                  onClick={() => toggleCategory(category.id)}
+                  className={`flex w-full items-center justify-between rounded-xl px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider hover:bg-amber-50 transition ${category.accentClass}`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span aria-hidden="true">{category.icon}</span>
+                    <span>{category.label}</span>
+                    <span className="rounded-full bg-amber-100 px-1.5 py-0.2 text-[10px] text-amber-900">
+                      {categoryGames.length}
+                    </span>
+                  </span>
+                  {isCatClosed ? (
+                    <ChevronRight className="h-3.5 w-3.5 opacity-70" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                  )}
+                </button>
               ) : (
                 <div className="my-1 border-t border-amber-100/80 first:hidden" />
               )}
 
-              {categoryGames.map((game) => {
+              {!isCatClosed &&
+                categoryGames.map((game) => {
                 const isActive = game.id === activeGameId;
                 const isReady = game.status === 'ready';
 
