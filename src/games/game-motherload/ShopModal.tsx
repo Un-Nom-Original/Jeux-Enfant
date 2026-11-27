@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Bot, ShieldCheck, Sparkles, X } from 'lucide-react';
 import type { GradeLevel } from '../../context/GradeContext';
 import { useSound } from '../../context/SoundContext';
-import { TELEPORTER_COST, UPGRADE_DEFS, UPGRADE_KEYS } from './constants';
+import { MAX_ROBOTS, TELEPORTER_COST, UPGRADE_DEFS, UPGRADE_KEYS } from './constants';
 import type { PlayerState, UpgradeKey } from './types';
-import { getStats, getUpgradeCost } from './world';
+import { getRobotCost, getStats, getUpgradeCost } from './world';
 
 interface ShopModalProps {
   isOpen: boolean;
@@ -14,6 +14,7 @@ interface ShopModalProps {
   onBuyUpgrade: (key: UpgradeKey) => void;
   onRepairHull: () => void;
   onBuyTeleporter: () => void;
+  onBuyRobot: () => void;
 }
 
 export function ShopModal({
@@ -24,12 +25,15 @@ export function ShopModal({
   onBuyUpgrade,
   onRepairHull,
   onBuyTeleporter,
+  onBuyRobot,
 }: ShopModalProps) {
   const { playClick } = useSound();
   const stats = getStats(player.upgrades, grade);
   const hullMissing = Math.max(0, Math.ceil(stats.maxHull - player.hull));
   const repairCost = Math.max(0, Math.round(hullMissing * (grade === '1re' ? 1 : 2)));
   const teleportCost = grade === '1re' ? Math.round(TELEPORTER_COST * 0.6) : TELEPORTER_COST;
+  const robotCount = player.robots ?? 0;
+  const robotCost = getRobotCost(robotCount, grade);
 
   return (
     <AnimatePresence>
@@ -202,6 +206,37 @@ export function ShopModal({
                     +1 · {teleportCost} $
                   </button>
                 </div>
+              </div>
+
+              {/* Robots Mineurs autonomes */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl bg-emerald-50 p-4 border-2 border-emerald-300">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-xs">
+                    <Bot className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <p className="font-display text-base font-bold text-emerald-950">
+                      🤖 Robot Mineur ({robotCount}/{MAX_ROBOTS})
+                    </p>
+                    <p className="text-xs font-bold text-emerald-800/80">
+                      Vole tout seul chercher des minerais sous terre et te les rapporte en $ !
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={robotCost === null || player.money < robotCost}
+                  onClick={onBuyRobot}
+                  className={`h-11 shrink-0 rounded-xl px-4 font-display text-sm font-bold transition active:scale-95 ${
+                    robotCost === null
+                      ? 'bg-emerald-200 text-emerald-900 cursor-default'
+                      : player.money >= robotCost
+                      ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm'
+                      : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                  }`}
+                >
+                  {robotCost === null ? '✨ Équipe complète' : `Acheter · ${robotCost} $`}
+                </button>
               </div>
             </div>
           </motion.div>

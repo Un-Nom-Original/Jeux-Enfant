@@ -1,7 +1,9 @@
 import type { GradeLevel } from '../../context/GradeContext';
 
+export type SudokuSize = 4 | 6 | 9 | 12;
+
 export interface SudokuPuzzle {
-  size: 4 | 6;
+  size: SudokuSize;
   boxRows: number;
   boxCols: number;
   /** 0 = case vide */
@@ -16,107 +18,75 @@ export const SUDOKU_4X4_ANIMALS: Record<number, string> = {
   4: '🦊',
 };
 
-const PUZZLES_4X4: SudokuPuzzle[] = [
-  {
-    size: 4,
-    boxRows: 2,
-    boxCols: 2,
-    initial: [
-      [1, 0, 3, 0],
-      [0, 4, 0, 2],
-      [2, 0, 4, 0],
-      [0, 3, 0, 1],
-    ],
-    solution: [
-      [1, 2, 3, 4],
-      [3, 4, 1, 2],
-      [2, 1, 4, 3],
-      [4, 3, 2, 1],
-    ],
-  },
-  {
-    size: 4,
-    boxRows: 2,
-    boxCols: 2,
-    initial: [
-      [0, 2, 0, 4],
-      [3, 0, 1, 0],
-      [0, 1, 0, 3],
-      [4, 0, 2, 0],
-    ],
-    solution: [
-      [1, 2, 3, 4],
-      [3, 4, 1, 2],
-      [2, 1, 4, 3],
-      [4, 3, 2, 1],
-    ],
-  },
-  {
-    size: 4,
-    boxRows: 2,
-    boxCols: 2,
-    initial: [
-      [2, 0, 0, 3],
-      [0, 3, 2, 0],
-      [0, 2, 3, 0],
-      [3, 0, 0, 2],
-    ],
-    solution: [
-      [2, 1, 4, 3],
-      [4, 3, 2, 1],
-      [1, 2, 3, 4],
-      [3, 4, 1, 2],
-    ],
-  },
-];
+function shuffle<T>(arr: T[]): T[] {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
 
-const PUZZLES_6X6: SudokuPuzzle[] = [
-  {
-    size: 6,
-    boxRows: 2,
-    boxCols: 3,
-    initial: [
-      [1, 0, 3, 0, 5, 0],
-      [0, 5, 0, 1, 0, 3],
-      [2, 0, 1, 0, 6, 0],
-      [0, 6, 0, 2, 0, 1],
-      [3, 0, 2, 0, 4, 0],
-      [0, 4, 0, 3, 0, 2],
-    ],
-    solution: [
-      [1, 2, 3, 4, 5, 6],
-      [4, 5, 6, 1, 2, 3],
-      [2, 3, 1, 5, 6, 4],
-      [5, 6, 4, 2, 3, 1],
-      [3, 1, 2, 6, 4, 5],
-      [6, 4, 5, 3, 1, 2],
-    ],
-  },
-  {
-    size: 6,
-    boxRows: 2,
-    boxCols: 3,
-    initial: [
-      [0, 2, 0, 4, 0, 6],
-      [4, 0, 6, 0, 2, 0],
-      [0, 3, 0, 5, 0, 4],
-      [5, 0, 4, 0, 3, 0],
-      [0, 1, 0, 6, 0, 5],
-      [6, 0, 5, 0, 1, 0],
-    ],
-    solution: [
-      [1, 2, 3, 4, 5, 6],
-      [4, 5, 6, 1, 2, 3],
-      [2, 3, 1, 5, 6, 4],
-      [5, 6, 4, 2, 3, 1],
-      [3, 1, 2, 6, 4, 5],
-      [6, 4, 5, 3, 1, 2],
-    ],
-  },
-];
+/**
+ * Génère une solution Sudoku 100% valide pour toute taille N = boxRows * boxCols
+ * (4x4 = 2x2, 6x6 = 2x3, 9x9 = 3x3, 12x12 = 3x4) en utilisant une formule
+ * modulaire canonique + permutations aléatoires des symboles, bandes et lignes.
+ */
+function buildValidSolution(boxRows: number, boxCols: number): number[][] {
+  const n = boxRows * boxCols;
+  const symbols = shuffle(Array.from({ length: n }, (_, i) => i + 1));
+
+  // Grille canonique valide : pattern(r, c) = (boxCols * (r % boxRows) + floor(r / boxRows) + c) % n
+  const rowBands = shuffle(Array.from({ length: boxCols }, (_, i) => i));
+  const colBands = shuffle(Array.from({ length: boxRows }, (_, i) => i));
+
+  const rowOrder: number[] = [];
+  for (const band of rowBands) {
+    const inner = shuffle(Array.from({ length: boxRows }, (_, i) => band * boxRows + i));
+    rowOrder.push(...inner);
+  }
+
+  const colOrder: number[] = [];
+  for (const band of colBands) {
+    const inner = shuffle(Array.from({ length: boxCols }, (_, i) => band * boxCols + i));
+    colOrder.push(...inner);
+  }
+
+  return rowOrder.map((r) =>
+    colOrder.map((c) => {
+      const idx = (boxCols * (r % boxRows) + Math.floor(r / boxRows) + c) % n;
+      return symbols[idx];
+    })
+  );
+}
+
+export function generateSudokuPuzzle(size: SudokuSize): SudokuPuzzle {
+  const dims: Record<SudokuSize, { boxRows: number; boxCols: number; emptyRatio: number }> = {
+    4: { boxRows: 2, boxCols: 2, emptyRatio: 0.45 },
+    6: { boxRows: 2, boxCols: 3, emptyRatio: 0.48 },
+    9: { boxRows: 3, boxCols: 3, emptyRatio: 0.5 },
+    12: { boxRows: 3, boxCols: 4, emptyRatio: 0.48 },
+  };
+
+  const { boxRows, boxCols, emptyRatio } = dims[size];
+  const solution = buildValidSolution(boxRows, boxCols);
+  const totalCells = size * size;
+  const cellsToHide = Math.floor(totalCells * emptyRatio);
+
+  const initial = solution.map((row) => [...row]);
+  const indices = shuffle(Array.from({ length: totalCells }, (_, i) => i));
+  for (let i = 0; i < cellsToHide; i++) {
+    const idx = indices[i];
+    const r = Math.floor(idx / size);
+    const c = idx % size;
+    initial[r][c] = 0;
+  }
+
+  return { size, boxRows, boxCols, initial, solution };
+}
 
 export function getSudokuPuzzles(grade: GradeLevel): SudokuPuzzle[] {
-  return grade === '1re' ? PUZZLES_4X4 : PUZZLES_6X6;
+  return [generateSudokuPuzzle(grade === '1re' ? 4 : 6)];
 }
 
 export function hasConflict(

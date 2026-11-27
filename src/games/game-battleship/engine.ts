@@ -59,3 +59,58 @@ export function generateBattleshipBoard(grade: GradeLevel): BattleshipBoard {
 
   return { size, ships };
 }
+
+/**
+ * Choisit une case cible pour l'ordinateur sur la grille du joueur.
+ * En mode malin (3e année), cible autour des cases déjà touchées mais non coulées !
+ */
+export function chooseAiShot(
+  playerBoard: BattleshipBoard,
+  aiShots: Set<string>,
+  smart: boolean
+): { row: number; col: number } | null {
+  const { size, ships } = playerBoard;
+
+  if (smart) {
+    // Cherche une case touchée d'un bateau pas encore coulé
+    const shipCellMap = new Map<string, Ship>();
+    ships.forEach((s) => s.cells.forEach((c) => shipCellMap.set(`${c.row},${c.col}`, s)));
+
+    const priorityTargets: Array<{ row: number; col: number }> = [];
+    for (const key of aiShots) {
+      const ship = shipCellMap.get(key);
+      if (!ship) continue;
+      const isSunk = ship.cells.every((c) => aiShots.has(`${c.row},${c.col}`));
+      if (isSunk) continue;
+
+      const [r, c] = key.split(',').map(Number);
+      for (const [dr, dc] of [
+        [-1, 0],
+        [1, 0],
+        [0, -1],
+        [0, 1],
+      ]) {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr >= 0 && nr < size && nc >= 0 && nc < size && !aiShots.has(`${nr},${nc}`)) {
+          priorityTargets.push({ row: nr, col: nc });
+        }
+      }
+    }
+
+    if (priorityTargets.length > 0) {
+      return priorityTargets[Math.floor(Math.random() * priorityTargets.length)];
+    }
+  }
+
+  const available: Array<{ row: number; col: number }> = [];
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (!aiShots.has(`${r},${c}`)) {
+        available.push({ row: r, col: c });
+      }
+    }
+  }
+  if (available.length === 0) return null;
+  return available[Math.floor(Math.random() * available.length)];
+}

@@ -7,6 +7,8 @@ export const TILE_SIZE = 40;
 export const METERS_PER_ROW = 10;
 
 export const TELEPORTER_COST = 400;
+export const MAX_ROBOTS = 3;
+export const ROBOT_COSTS: [number, number, number] = [350, 950, 2200];
 
 export const MINERALS: Record<MineralKind, MineralDef> = {
   iron: {

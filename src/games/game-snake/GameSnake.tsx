@@ -188,6 +188,7 @@ export function GameSnake() {
         style={{
           touchAction: 'none',
           gridTemplateColumns: `repeat(${GRID}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${GRID}, minmax(0, 1fr))`,
         }}
         className="relative grid aspect-square w-full max-w-[min(86vw,380px)] rounded-3xl overflow-hidden bg-emerald-50 border-4 border-emerald-400 shadow-lg select-none"
       >
@@ -199,19 +200,26 @@ export function GameSnake() {
           return (
             <div
               key={i}
-              className={`flex items-center justify-center ${
+              className={`relative h-full w-full min-h-0 min-w-0 overflow-hidden flex items-center justify-center ${
                 (x + y) % 2 === 0 ? 'bg-emerald-50' : 'bg-emerald-100/60'
               }`}
             >
               {sIdx === 0 && (
-                <div className="h-[88%] w-[88%] rounded-lg bg-emerald-600 flex items-center justify-center text-[10px]">
-                  👀
+                <div className="h-[88%] w-[88%] rounded-lg bg-emerald-600 flex items-center justify-center">
+                  <span className="flex gap-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                  </span>
                 </div>
               )}
               {sIdx !== undefined && sIdx > 0 && (
                 <div className="h-[80%] w-[80%] rounded-md bg-emerald-400" />
               )}
-              {isFood && <span className="text-base sm:text-lg leading-none">{food.emoji}</span>}
+              {isFood && (
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm sm:text-base leading-none">
+                  {food.emoji}
+                </span>
+              )}
             </div>
           );
         })}

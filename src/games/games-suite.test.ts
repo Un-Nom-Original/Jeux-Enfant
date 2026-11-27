@@ -4,7 +4,7 @@ import { generateWordSearch, getLineCells } from './game-word-search/generator';
 import { generateListenRound } from './game-listen-word/words';
 import { generateMathQuestion } from './game-math-race/generator';
 import { generateSequenceQuestion } from './game-logic-sequence/generator';
-import { getSudokuPuzzles, isSudokuSolved } from './game-sudoku/puzzles';
+import { generateSudokuPuzzle, isSudokuSolved } from './game-sudoku/puzzles';
 import {
   chooseConnect4AiCol,
   createEmptyConnect4,
@@ -53,13 +53,11 @@ describe('Suite complète des nouveaux jeux (1re & 3e année)', () => {
     }
   });
 
-  it('valide les solutions de toutes les grilles Sudoku 4x4 et 6x6', () => {
-    for (const grade of ['1re', '3e'] as const) {
-      const puzzles = getSudokuPuzzles(grade);
-      for (const p of puzzles) {
-        expect(isSudokuSolved(p.solution, p.boxRows, p.boxCols)).toBe(true);
-        expect(isSudokuSolved(p.initial, p.boxRows, p.boxCols)).toBe(false);
-      }
+  it('valide les solutions de toutes les grilles Sudoku 4x4, 6x6, 9x9 et 12x12', () => {
+    for (const size of [4, 6, 9, 12] as const) {
+      const p = generateSudokuPuzzle(size);
+      expect(isSudokuSolved(p.solution, p.boxRows, p.boxCols)).toBe(true);
+      expect(isSudokuSolved(p.initial, p.boxRows, p.boxCols)).toBe(false);
     }
   });
 

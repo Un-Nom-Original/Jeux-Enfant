@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SURFACE_ROW, WORLD_COLS, WORLD_ROWS } from './constants';
 import {
+  buyHelperRobot,
   buyPlayerUpgrade,
   buyTeleporter,
   createInitialPlayer,
@@ -53,11 +54,15 @@ describe('Mini-Motherload world & economy', () => {
     expect(upgraded!.money).toBe(500 - cost1);
   });
 
-  it('permet d’acheter un téléporteur si le joueur a assez d’argent', () => {
+  it('permet d’acheter un téléporteur et des robots mineurs autonomes', () => {
     const player = createInitialPlayer('3e');
     player.money = 1000;
     const updated = buyTeleporter(player, '3e');
     expect(updated).not.toBeNull();
     expect(updated!.teleporters).toBe(player.teleporters + 1);
+
+    const withBot = buyHelperRobot(updated!, '3e');
+    expect(withBot).not.toBeNull();
+    expect(withBot!.robots).toBe(1);
   });
 });

@@ -25,8 +25,9 @@ import {
 } from './constants';
 import { ShopModal } from './ShopModal';
 import { clearMotherloadSave, loadMotherload, saveMotherload } from './storage';
-import type { FloatingText, Particle, PlayerState, TileKind, UpgradeKey } from './types';
+import type { FloatingText, MineralKind, Particle, PlayerState, TileKind, UpgradeKey } from './types';
 import {
+  buyHelperRobot,
   buyPlayerUpgrade,
   buyTeleporter,
   createInitialPlayer,
@@ -48,8 +49,143 @@ interface DrillAction {
   duration: number;
 }
 
+interface HelperRobot {
+  id: number;
+  x: number;
+  y: number;
+  state: 'seeking' | 'mining' | 'returning';
+  targetCol: number;
+  targetRow: number;
+  miningTimer: number;
+  carrying: MineralKind | null;
+}
+
 const CANVAS_W = 560;
 const CANVAS_H = 380;
+
+/** Dessine un minerai détaillé (gemme facettée, pépite métallique, fossile, étoile ou coffre) */
+function drawDetailedMineral(
+  ctx: CanvasRenderingContext2D,
+  kind: MineralKind,
+  tx: number,
+  ty: number,
+  animTime: number
+) {
+  const def = MINERALS[kind];
+  const cx = tx + TILE_SIZE / 2;
+  const cy = ty + TILE_SIZE / 2;
+  const pulse = 0.75 + 0.25 * Math.sin(animTime * 4 + tx * 0.1 + ty * 0.1);
+
+  if (kind === 'core_chest') {
+    // Coffre doré royal avec serrure et halo
+    ctx.fillStyle = 'rgba(250, 204, 21, 0.32)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#B45309';
+    ctx.beginPath();
+    ctx.roundRect(tx + 5, ty + 10, 30, 22, 5);
+    ctx.fill();
+    ctx.fillStyle = '#FACC15';
+    ctx.fillRect(tx + 5, ty + 16, 30, 5);
+    ctx.fillStyle = '#FEF08A';
+    ctx.beginPath();
+    ctx.roundRect(tx + 16, ty + 14, 8, 9, 2);
+    ctx.fill();
+    return;
+  }
+
+  if (kind === 'star_crystal') {
+    // Étoile brillante à 5 branches
+    ctx.fillStyle = def.color;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? 14 : 6;
+      const a = (i * Math.PI) / 5 - Math.PI / 2;
+      const sx = cx + Math.cos(a) * r;
+      const sy = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${pulse})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (kind === 'fossil') {
+    // Os / fossile de dinosaure stylisé
+    ctx.strokeStyle = '#FEF3C7';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(tx + 12, ty + 28);
+    ctx.lineTo(tx + 28, ty + 12);
+    ctx.stroke();
+    ctx.fillStyle = '#FFFBEB';
+    ctx.beginPath();
+    ctx.arc(tx + 10, ty + 26, 4, 0, Math.PI * 2);
+    ctx.arc(tx + 14, ty + 30, 4, 0, Math.PI * 2);
+    ctx.arc(tx + 26, ty + 10, 4, 0, Math.PI * 2);
+    ctx.arc(tx + 30, ty + 14, 4, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (kind === 'diamond' || kind === 'emerald' || kind === 'ruby' || kind === 'amazonite') {
+    // Gemme facettée brillante (losange / hexagone taillé)
+    ctx.fillStyle = def.color;
+    ctx.beginPath();
+    ctx.moveTo(cx, ty + 5);
+    ctx.lineTo(tx + 33, cy - 2);
+    ctx.lineTo(cx, ty + 35);
+    ctx.lineTo(tx + 7, cy - 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Facette lumineuse interne
+    ctx.fillStyle = def.sparkle;
+    ctx.globalAlpha = 0.65 * pulse;
+    ctx.beginPath();
+    ctx.moveTo(cx, ty + 9);
+    ctx.lineTo(tx + 26, cy - 2);
+    ctx.lineTo(cx, cy + 3);
+    ctx.lineTo(tx + 14, cy - 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Éclat d'étoile
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(cx - 4, cy - 5, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  // Minerais métalliques (Fer, Bronze, Argent, Or, Platine) : 3 pépites + reflets
+  const nuggets = [
+    { dx: -7, dy: -5, rx: 7, ry: 5 },
+    { dx: 7, dy: 4, rx: 8, ry: 6 },
+    { dx: -4, dy: 8, rx: 5, ry: 4 },
+  ];
+  for (const n of nuggets) {
+    ctx.fillStyle = def.color;
+    ctx.beginPath();
+    ctx.ellipse(cx + n.dx, cy + n.dy, n.rx, n.ry, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = def.sparkle;
+    ctx.globalAlpha = 0.75 * pulse;
+    ctx.beginPath();
+    ctx.arc(cx + n.dx - 2, cy + n.dy - 1.5, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
 
 export function GameMotherload() {
   const { grade } = useGrade();
@@ -57,10 +193,13 @@ export function GameMotherload() {
 
   const initialSave = useRef(loadMotherload());
   const worldRef = useRef<TileKind[][]>(initialSave.current?.world ?? generateWorld());
-  const playerRef = useRef<PlayerState>(
-    initialSave.current?.player ?? createInitialPlayer(grade)
-  );
+  const playerRef = useRef<PlayerState>({
+    ...(initialSave.current?.player ?? createInitialPlayer(grade)),
+    robots: initialSave.current?.player?.robots ?? 0,
+  });
+
   const drillRef = useRef<DrillAction | null>(null);
+  const robotsRef = useRef<HelperRobot[]>([]);
   const keysRef = useRef<{ left: boolean; right: boolean; up: boolean; down: boolean }>({
     left: false,
     right: false,
@@ -71,6 +210,8 @@ export function GameMotherload() {
   const textsRef = useRef<FloatingText[]>([]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const nextTextIdRef = useRef(1);
+  const animTimeRef = useRef(0);
+  const treadPhaseRef = useRef(0);
 
   const [hudPlayer, setHudPlayer] = useState<PlayerState>(() => ({ ...playerRef.current }));
   const [isShopOpen, setIsShopOpen] = useState(false);
@@ -144,7 +285,13 @@ export function GameMotherload() {
     const affordableCost = Math.min(p.money, fullCost);
     const fuelAdded = gradeRef.current === '1re' ? missing : affordableCost / costPerUnit;
 
-    p.money = Math.max(0, p.money - (gradeRef.current === '1re' ? Math.min(p.money, Math.ceil(missing * 0.2)) : affordableCost));
+    p.money = Math.max(
+      0,
+      p.money -
+        (gradeRef.current === '1re'
+          ? Math.min(p.money, Math.ceil(missing * 0.2))
+          : affordableCost)
+    );
     p.fuel = Math.min(stats.maxFuel, p.fuel + fuelAdded);
     playMerge(32);
     showBanner('⛽ Plein d’essence effectué !');
@@ -213,12 +360,22 @@ export function GameMotherload() {
     syncHudAndSave(true);
   }, [playMerge, syncHudAndSave]);
 
+  const handleBuyRobot = useCallback(() => {
+    const updated = buyHelperRobot(playerRef.current, gradeRef.current);
+    if (!updated) return;
+    playerRef.current = updated;
+    playWin();
+    showBanner('🤖 Nouveau Robot Mineur déployé ! Il part chercher des minerais !');
+    syncHudAndSave(true);
+  }, [playWin, showBanner, syncHudAndSave]);
+
   const handleResetMine = useCallback(() => {
     playClick();
     clearMotherloadSave();
     worldRef.current = generateWorld();
     playerRef.current = createInitialPlayer(gradeRef.current);
     drillRef.current = null;
+    robotsRef.current = [];
     particlesRef.current = [];
     textsRef.current = [];
     setConfirmReset(false);
@@ -254,7 +411,7 @@ export function GameMotherload() {
     };
   }, []);
 
-  // Boucle 60 FPS (physique + forage + rendu Canvas)
+  // Boucle 60 FPS (physique + forage + robots autonomes + rendu Canvas)
   useEffect(() => {
     let rafId = 0;
     let lastTime = performance.now();
@@ -270,6 +427,22 @@ export function GameMotherload() {
       if (col < 0 || col >= WORLD_COLS || row <= SURFACE_ROW || row >= WORLD_ROWS) return false;
       const tile = worldRef.current[row][col];
       return tile !== 'empty' && tile !== 'boulder';
+    };
+
+    const findMineralTargetForRobot = (maxRowLimit: number): { col: number; row: number } | null => {
+      const world = worldRef.current;
+      const candidates: Array<{ col: number; row: number }> = [];
+      const limit = Math.min(WORLD_ROWS - 6, Math.max(24, maxRowLimit));
+      for (let r = SURFACE_ROW + 2; r <= limit; r++) {
+        for (let c = 0; c < WORLD_COLS; c++) {
+          const tile = world[r][c];
+          if (isMineral(tile) && tile !== 'core_chest') {
+            candidates.push({ col: c, row: r });
+          }
+        }
+      }
+      if (candidates.length === 0) return null;
+      return candidates[Math.floor(Math.random() * candidates.length)];
     };
 
     const rescueToSurface = (reason: string) => {
@@ -296,20 +469,104 @@ export function GameMotherload() {
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - lastTime) / 1000);
       lastTime = now;
+      animTimeRef.current += dt;
 
       const p = playerRef.current;
       const world = worldRef.current;
       const stats = getStats(p.upgrades, gradeRef.current);
       const keys = keysRef.current;
 
+      // Synchronise le nombre de robots actifs avec player.robots
+      const desiredRobots = p.robots ?? 0;
+      while (robotsRef.current.length < desiredRobots) {
+        const id = robotsRef.current.length + 1;
+        robotsRef.current.push({
+          id,
+          x: 9 + id * 1.5,
+          y: SURFACE_ROW - 0.5,
+          state: 'seeking',
+          targetCol: 10,
+          targetRow: 8,
+          miningTimer: 0,
+          carrying: null,
+        });
+      }
+
       if (!isShopOpenRef.current) {
-        // 1. Si un forage est en cours
+        // 1. Mise à jour des Robots Mineurs autonomes
+        const maxRobotRow = SURFACE_ROW + Math.round(p.maxDepth / METERS_PER_ROW) + 18;
+        for (const bot of robotsRef.current) {
+          const speed = 4.6;
+          if (bot.state === 'seeking') {
+            const tile = world[bot.targetRow]?.[bot.targetCol];
+            if (!tile || !isMineral(tile) || tile === 'core_chest') {
+              const target = findMineralTargetForRobot(maxRobotRow);
+              if (target) {
+                bot.targetCol = target.col;
+                bot.targetRow = target.row;
+              }
+            }
+            const dx = bot.targetCol - bot.x;
+            const dy = bot.targetRow - bot.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 0.22) {
+              bot.x = bot.targetCol;
+              bot.y = bot.targetRow;
+              bot.state = 'mining';
+              bot.miningTimer = 0.85;
+            } else {
+              bot.x += (dx / dist) * speed * dt;
+              bot.y += (dy / dist) * speed * dt;
+            }
+          } else if (bot.state === 'mining') {
+            bot.miningTimer -= dt;
+            if (Math.random() < 0.35) {
+              spawnParticles(bot.targetCol, bot.targetRow, '#38BDF8', 1);
+            }
+            if (bot.miningTimer <= 0) {
+              const tile = world[bot.targetRow]?.[bot.targetCol];
+              if (tile && isMineral(tile) && tile !== 'core_chest') {
+                bot.carrying = tile;
+                world[bot.targetRow][bot.targetCol] = 'empty';
+                spawnParticles(bot.targetCol, bot.targetRow, MINERALS[tile].color, 8);
+              }
+              bot.state = 'returning';
+            }
+          } else if (bot.state === 'returning') {
+            const homeX = 10.5;
+            const homeY = SURFACE_ROW - 0.3;
+            const dx = homeX - bot.x;
+            const dy = homeY - bot.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 0.3) {
+              if (bot.carrying) {
+                const def = MINERALS[bot.carrying];
+                p.money += def.value;
+                addFloatingText(homeX, homeY - 0.4, `🤖 +${def.value}$ (${def.name})`, '#34D399');
+                playMerge(32);
+                bot.carrying = null;
+              }
+              const nextTarget = findMineralTargetForRobot(maxRobotRow);
+              if (nextTarget) {
+                bot.targetCol = nextTarget.col;
+                bot.targetRow = nextTarget.row;
+              }
+              bot.state = 'seeking';
+            } else {
+              bot.x += (dx / dist) * (speed * 1.15) * dt;
+              bot.y += (dy / dist) * (speed * 1.15) * dt;
+            }
+          }
+        }
+
+        // 2. Si un forage est en cours (mouvement fluide, sans tremblement)
         if (drillRef.current) {
           const d = drillRef.current;
           d.elapsed += dt * 1000;
           const t = Math.min(1, d.elapsed / d.duration);
           p.x = d.fromX + (d.toX - d.fromX) * t;
           p.y = d.fromY + (d.toY - d.fromY) * t;
+          treadPhaseRef.current += dt * 14;
 
           if (Math.random() < 0.45) {
             const tile = world[d.targetRow][d.targetCol];
@@ -370,18 +627,17 @@ export function GameMotherload() {
             }
           }
         } else {
-          // 2. Déplacement libre / Vol / Gravité / Déclenchement de forage
+          // 3. Déplacement libre / Vol / Gravité / Déclenchement de forage
           const col = Math.round(p.x);
           const row = Math.round(p.y);
           const onGround =
             row >= WORLD_ROWS - 1 ||
             (Math.abs(p.y - row) < 0.08 && isSolid(col, row + 1));
 
-          // Réacteur vers le haut
           if (keys.up && p.fuel > 0) {
             p.vy = Math.max(-stats.thrustSpeed, p.vy - 18 * dt);
             p.fuel = Math.max(0, p.fuel - stats.fuelBurnPerSec * dt);
-            if (Math.random() < 0.6) {
+            if (Math.random() < 0.65) {
               particlesRef.current.push({
                 x: (p.x + 0.5) * TILE_SIZE + (Math.random() - 0.5) * 10,
                 y: (p.y + 0.95) * TILE_SIZE,
@@ -394,23 +650,22 @@ export function GameMotherload() {
               });
             }
           } else {
-            // Gravité
             p.vy = Math.min(11, p.vy + 16 * dt);
           }
 
-          // Mouvement horizontal
           const moveSpeed = 5.4;
           if (keys.left) {
             p.facing = -1;
             p.vx = -moveSpeed;
+            if (onGround) treadPhaseRef.current -= dt * 16;
           } else if (keys.right) {
             p.facing = 1;
             p.vx = moveSpeed;
+            if (onGround) treadPhaseRef.current += dt * 16;
           } else {
             p.vx = 0;
           }
 
-          // Tentative de forage vers le bas
           if (keys.down && onGround && p.fuel > 0 && isDiggable(col, row + 1)) {
             const tile = world[row + 1][col];
             const rockMult = tile === 'rock' ? 1.45 : 1;
@@ -469,29 +724,22 @@ export function GameMotherload() {
             p.vx = 0;
             p.vy = 0;
           } else {
-            // Appliquer mouvement horizontal avec collision
             if (p.vx !== 0) {
               const nextX = p.x + p.vx * dt;
               const checkCol = p.vx > 0 ? Math.floor(nextX + 0.82) : Math.floor(nextX + 0.18);
               const curRow = Math.round(p.y);
-              if (
-                nextX >= 0 &&
-                nextX <= WORLD_COLS - 1 &&
-                !isSolid(checkCol, curRow)
-              ) {
+              if (nextX >= 0 && nextX <= WORLD_COLS - 1 && !isSolid(checkCol, curRow)) {
                 p.x = nextX;
               } else {
                 p.vx = 0;
               }
             }
 
-            // Appliquer mouvement vertical avec collision
             const nextY = p.y + p.vy * dt;
             const curCol = Math.round(p.x);
             if (p.vy > 0) {
               const footRow = Math.floor(nextY + 0.92);
               if (footRow >= WORLD_ROWS || isSolid(curCol, footRow)) {
-                // Dégâts de chute rapide uniquement en 3e année
                 if (gradeRef.current === '3e' && p.vy > 8.6) {
                   const fallDmg = Math.round((p.vy - 8.2) * 8);
                   p.hull = Math.max(0, p.hull - fallDmg);
@@ -519,13 +767,11 @@ export function GameMotherload() {
             }
           }
 
-          // Recharge douce et vente auto quand on passe en surface si essence vide
           if (p.fuel <= 0 && p.y > SURFACE_ROW + 0.2) {
             rescueToSurface('⛽ Panne d’essence !');
           }
         }
 
-        // Mise à jour particules & textes flottants
         particlesRef.current = particlesRef.current.filter((pt) => {
           pt.life += dt;
           pt.x += pt.vx * dt;
@@ -541,26 +787,19 @@ export function GameMotherload() {
         });
       }
 
-      // 3. Rendu Canvas 60 FPS
+      // 4. Rendu Canvas 60 FPS (stable, fluide, sans tremblement)
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
       if (canvas && ctx) {
         const camX = Math.max(
           0,
-          Math.min(
-            WORLD_COLS * TILE_SIZE - CANVAS_W,
-            (p.x + 0.5) * TILE_SIZE - CANVAS_W / 2
-          )
+          Math.min(WORLD_COLS * TILE_SIZE - CANVAS_W, (p.x + 0.5) * TILE_SIZE - CANVAS_W / 2)
         );
         const camY = Math.max(
           0,
-          Math.min(
-            WORLD_ROWS * TILE_SIZE - CANVAS_H,
-            (p.y + 0.5) * TILE_SIZE - CANVAS_H * 0.45
-          )
+          Math.min(WORLD_ROWS * TILE_SIZE - CANVAS_H, (p.y + 0.5) * TILE_SIZE - CANVAS_H * 0.45)
         );
 
-        // Fond ciel martien / sous-sol sombre
         const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
         skyGrad.addColorStop(0, '#1E1B4B');
         skyGrad.addColorStop(0.5, '#7C2D12');
@@ -571,7 +810,6 @@ export function GameMotherload() {
         ctx.save();
         ctx.translate(-camX, -camY);
 
-        // Ciel + étoiles + 3 bâtiments en surface
         const surfaceY = (SURFACE_ROW + 1) * TILE_SIZE;
         if (camY < surfaceY + 40) {
           const topSky = ctx.createLinearGradient(0, 0, 0, surfaceY);
@@ -581,13 +819,11 @@ export function GameMotherload() {
           ctx.fillStyle = topSky;
           ctx.fillRect(0, 0, WORLD_COLS * TILE_SIZE, surfaceY);
 
-          // Petites étoiles
           ctx.fillStyle = 'rgba(255,255,255,0.75)';
           for (let i = 0; i < 18; i++) {
             ctx.fillRect((i * 53 + 17) % (WORLD_COLS * TILE_SIZE), (i * 19 + 8) % 55, 2.5, 2.5);
           }
 
-          // 3 Stations en surface
           const stations = [
             { col: 3, label: '⛽ ESSENCE', color: '#EF4444' },
             { col: 10, label: '💰 VENTE', color: '#F59E0B' },
@@ -609,7 +845,7 @@ export function GameMotherload() {
           });
         }
 
-        // Tuiles visibles uniquement
+        // Tuiles visibles avec minerais détaillés
         const startRow = Math.max(0, Math.floor(camY / TILE_SIZE));
         const endRow = Math.min(WORLD_ROWS - 1, Math.ceil((camY + CANVAS_H) / TILE_SIZE));
         const startCol = Math.max(0, Math.floor(camX / TILE_SIZE));
@@ -629,21 +865,25 @@ export function GameMotherload() {
               continue;
             }
 
-            // Couleur de fond du bloc selon profondeur
             if (tile === 'boulder') {
-              ctx.fillStyle = '#475569';
+              ctx.fillStyle = '#334155';
               ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
               ctx.fillStyle = '#64748B';
               ctx.beginPath();
-              ctx.roundRect(tx + 4, ty + 4, TILE_SIZE - 8, TILE_SIZE - 8, 8);
+              ctx.roundRect(tx + 4, ty + 4, TILE_SIZE - 8, TILE_SIZE - 8, 9);
+              ctx.fill();
+              ctx.fillStyle = '#94A3B8';
+              ctx.beginPath();
+              ctx.arc(tx + 15, ty + 14, 4, 0, Math.PI * 2);
               ctx.fill();
               continue;
             }
 
             if (tile === 'lava') {
-              ctx.fillStyle = '#EA580C';
+              ctx.fillStyle = '#C2410C';
               ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-              ctx.fillStyle = '#FACC15';
+              const lavaPulse = 0.65 + 0.35 * Math.sin(animTimeRef.current * 5 + r + c);
+              ctx.fillStyle = `rgba(250, 204, 21, ${lavaPulse})`;
               ctx.beginPath();
               ctx.arc(tx + 14, ty + 18, 6, 0, Math.PI * 2);
               ctx.arc(tx + 28, ty + 26, 5, 0, Math.PI * 2);
@@ -651,7 +891,6 @@ export function GameMotherload() {
               continue;
             }
 
-            // Terre / roche de base
             const baseColor =
               r < 28 ? '#B45309' : r < 65 ? '#9A3412' : r < 105 ? '#572416' : '#3B1528';
             ctx.fillStyle = baseColor;
@@ -660,62 +899,153 @@ export function GameMotherload() {
             ctx.strokeRect(tx + 0.5, ty + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
 
             if (isMineral(tile)) {
-              const def = MINERALS[tile];
-              ctx.fillStyle = def.color;
-              ctx.beginPath();
-              ctx.roundRect(tx + 8, ty + 8, TILE_SIZE - 16, TILE_SIZE - 16, 7);
-              ctx.fill();
-              ctx.fillStyle = def.sparkle;
-              ctx.beginPath();
-              ctx.arc(tx + 16, ty + 15, 3.5, 0, Math.PI * 2);
-              ctx.fill();
+              drawDetailedMineral(ctx, tile, tx, ty, animTimeRef.current);
             }
           }
         }
 
-        // Foreuse du joueur
+        // Robots Mineurs autonomes (avec hélice qui tourne et minerai transporté)
+        for (const bot of robotsRef.current) {
+          const bx = (bot.x + 0.5) * TILE_SIZE;
+          const by = (bot.y + 0.5) * TILE_SIZE + Math.sin(animTimeRef.current * 6 + bot.id) * 2.5;
+
+          // Hélice qui tourne au-dessus
+          const propW = 10 + Math.abs(Math.sin(animTimeRef.current * 24 + bot.id)) * 14;
+          ctx.fillStyle = '#E2E8F0';
+          ctx.fillRect(bx - propW / 2, by - 16, propW, 3);
+          ctx.fillRect(bx - 1.5, by - 14, 3, 5);
+
+          // Corps du petit robot
+          ctx.fillStyle = '#06B6D4';
+          ctx.beginPath();
+          ctx.roundRect(bx - 11, by - 10, 22, 18, 6);
+          ctx.fill();
+          ctx.strokeStyle = '#0E7490';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Yeux lumineux
+          ctx.fillStyle = '#FEF08A';
+          ctx.beginPath();
+          ctx.arc(bx - 4, by - 2, 2.5, 0, Math.PI * 2);
+          ctx.arc(bx + 4, by - 2, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Minerai transporté sous le robot
+          if (bot.carrying) {
+            ctx.fillStyle = MINERALS[bot.carrying].color;
+            ctx.beginPath();
+            ctx.arc(bx, by + 13, 6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Foreuse du joueur (zéro tremblement + chenilles animées + mèche qui tourne !)
         const px = p.x * TILE_SIZE;
         const py = p.y * TILE_SIZE;
+
+        // Flamme douce du réacteur en vol
+        if (keys.up && p.fuel > 0 && !drillRef.current) {
+          const flameH = 8 + Math.sin(animTimeRef.current * 28) * 3;
+          ctx.fillStyle = '#FB923C';
+          ctx.beginPath();
+          ctx.moveTo(px + 13, py + TILE_SIZE - 2);
+          ctx.lineTo(px + 27, py + TILE_SIZE - 2);
+          ctx.lineTo(px + 20, py + TILE_SIZE + flameH);
+          ctx.closePath();
+          ctx.fill();
+        }
 
         // Corps métallique
         ctx.fillStyle = '#FACC15';
         ctx.beginPath();
-        ctx.roundRect(px + 5, py + 6, TILE_SIZE - 10, TILE_SIZE - 14, 8);
+        ctx.roundRect(px + 5, py + 5, TILE_SIZE - 10, TILE_SIZE - 14, 8);
         ctx.fill();
         ctx.strokeStyle = '#78350F';
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Cockpit vitré
+        // Cockpit vitré avec reflet
         ctx.fillStyle = '#38BDF8';
         ctx.beginPath();
-        ctx.roundRect(px + 10, py + 10, TILE_SIZE - 20, 12, 5);
+        ctx.roundRect(px + 10, py + 9, TILE_SIZE - 20, 12, 5);
         ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fillRect(px + 13, py + 11, 6, 3);
 
-        // Chenilles
+        // Chenilles animées (crampons qui avancent quand on roule !)
         ctx.fillStyle = '#1E293B';
         ctx.beginPath();
-        ctx.roundRect(px + 4, py + TILE_SIZE - 10, TILE_SIZE - 8, 8, 4);
+        ctx.roundRect(px + 4, py + TILE_SIZE - 11, TILE_SIZE - 8, 9, 4);
         ctx.fill();
-
-        // Mèche de foreuse animée
-        ctx.fillStyle = '#E2E8F0';
-        ctx.beginPath();
-        if (drillRef.current && drillRef.current.targetRow > drillRef.current.fromY) {
-          ctx.moveTo(px + 13, py + TILE_SIZE - 2);
-          ctx.lineTo(px + 27, py + TILE_SIZE - 2);
-          ctx.lineTo(px + 20, py + TILE_SIZE + 8);
-        } else if (p.facing === 1) {
-          ctx.moveTo(px + TILE_SIZE - 4, py + 14);
-          ctx.lineTo(px + TILE_SIZE - 4, py + 26);
-          ctx.lineTo(px + TILE_SIZE + 5, py + 20);
-        } else {
-          ctx.moveTo(px + 4, py + 14);
-          ctx.lineTo(px + 4, py + 26);
-          ctx.lineTo(px - 5, py + 20);
+        ctx.fillStyle = '#94A3B8';
+        const treadShift = ((treadPhaseRef.current % 6) + 6) % 6;
+        for (let i = 0; i < 4; i++) {
+          const cxWheel = px + 8 + ((i * 6.5 + treadShift) % 24);
+          ctx.beginPath();
+          ctx.arc(cxWheel, py + TILE_SIZE - 6.5, 2.2, 0, Math.PI * 2);
+          ctx.fill();
         }
-        ctx.closePath();
-        ctx.fill();
+
+        // Mèche de foreuse avec rainures hélicoïdales qui tournent !
+        const isDrillingDown = Boolean(drillRef.current && drillRef.current.targetRow > drillRef.current.fromY);
+        const drillSpin = (animTimeRef.current * (drillRef.current ? 18 : 4)) % 6;
+
+        ctx.save();
+        ctx.fillStyle = '#CBD5E1';
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1.5;
+        if (isDrillingDown) {
+          ctx.beginPath();
+          ctx.moveTo(px + 12, py + TILE_SIZE - 2);
+          ctx.lineTo(px + 28, py + TILE_SIZE - 2);
+          ctx.lineTo(px + 20, py + TILE_SIZE + 11);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          // Rainures tournantes
+          ctx.beginPath();
+          for (let sy = 1; sy <= 9; sy += 4) {
+            const yLine = py + TILE_SIZE - 2 + ((sy + drillSpin) % 10);
+            const halfW = Math.max(1, 7 * (1 - (yLine - (py + TILE_SIZE - 2)) / 13));
+            ctx.moveTo(px + 20 - halfW, yLine);
+            ctx.lineTo(px + 20 + halfW, yLine);
+          }
+          ctx.stroke();
+        } else if (p.facing === 1) {
+          ctx.beginPath();
+          ctx.moveTo(px + TILE_SIZE - 4, py + 13);
+          ctx.lineTo(px + TILE_SIZE - 4, py + 27);
+          ctx.lineTo(px + TILE_SIZE + 9, py + 20);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.beginPath();
+          for (let sx = 1; sx <= 9; sx += 4) {
+            const xLine = px + TILE_SIZE - 4 + ((sx + drillSpin) % 10);
+            const halfH = Math.max(1, 6 * (1 - (xLine - (px + TILE_SIZE - 4)) / 13));
+            ctx.moveTo(xLine, py + 20 - halfH);
+            ctx.lineTo(xLine, py + 20 + halfH);
+          }
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(px + 4, py + 13);
+          ctx.lineTo(px + 4, py + 27);
+          ctx.lineTo(px - 9, py + 20);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.beginPath();
+          for (let sx = 1; sx <= 9; sx += 4) {
+            const xLine = px + 4 - ((sx + drillSpin) % 10);
+            const halfH = Math.max(1, 6 * (1 - (px + 4 - xLine) / 13));
+            ctx.moveTo(xLine, py + 20 - halfH);
+            ctx.lineTo(xLine, py + 20 + halfH);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
 
         // Particules
         for (const pt of particlesRef.current) {
@@ -725,7 +1055,7 @@ export function GameMotherload() {
         }
         ctx.globalAlpha = 1;
 
-        // Textes flottants (+250$ Or !)
+        // Textes flottants
         ctx.font = 'bold 13px Fredoka, Nunito, sans-serif';
         ctx.textAlign = 'center';
         for (const ft of textsRef.current) {
@@ -795,7 +1125,7 @@ export function GameMotherload() {
             ⛏️ Mini-Motherload
           </h2>
           <p className="text-xs font-bold text-amber-800/70">
-            Creuse sur Mars, vends tes minerais en surface et trouve le Coffre du Noyau !
+            Creuse sur Mars, achète des robots mineurs à l'Atelier et trouve le Coffre du Noyau !
           </p>
         </div>
 
@@ -815,7 +1145,7 @@ export function GameMotherload() {
         </div>
       </div>
 
-      {/* HUD : Profondeur, Argent, Essence, Soute, Coque */}
+      {/* HUD */}
       <div className="grid w-full grid-cols-2 sm:grid-cols-5 gap-2 rounded-2xl bg-slate-900 p-2.5 text-white shadow-md border-2 border-amber-500/40">
         <div className="flex flex-col items-center rounded-xl bg-white/10 px-2 py-1">
           <span className="text-[10px] font-bold uppercase text-amber-200/80">Profondeur</span>
@@ -823,7 +1153,9 @@ export function GameMotherload() {
         </div>
 
         <div className="flex flex-col items-center rounded-xl bg-white/10 px-2 py-1">
-          <span className="text-[10px] font-bold uppercase text-amber-200/80">Argent</span>
+          <span className="text-[10px] font-bold uppercase text-amber-200/80">
+            Argent {(hudPlayer.robots ?? 0) > 0 ? `· 🤖×${hudPlayer.robots}` : ''}
+          </span>
           <span className="font-display text-base font-bold text-amber-300">{hudPlayer.money} $</span>
         </div>
 
@@ -933,12 +1265,11 @@ export function GameMotherload() {
         </button>
       </div>
 
-      {/* Contrôles tactiles Tablette (D-Pad confortable) */}
+      {/* Contrôles tactiles Tablette */}
       <div
         style={{ touchAction: 'none' }}
         className="flex w-full items-center justify-between gap-4 rounded-3xl bg-white px-5 py-3 shadow-sm border-2 border-amber-200 select-none"
       >
-        {/* Gauche / Droite */}
         <div className="flex items-center gap-2.5">
           <button
             type="button"
@@ -962,7 +1293,6 @@ export function GameMotherload() {
           Maintiens ▲ pour voler · ▼ ◀ ▶ pour creuser
         </p>
 
-        {/* Creuser (Bas) / Voler (Haut) */}
         <div className="flex items-center gap-2.5">
           <button
             type="button"
@@ -994,6 +1324,7 @@ export function GameMotherload() {
         onBuyUpgrade={handleBuyUpgrade}
         onRepairHull={handleRepairHull}
         onBuyTeleporter={handleBuyTeleporter}
+        onBuyRobot={handleBuyRobot}
       />
 
       {/* Confirmation nouvelle mine */}

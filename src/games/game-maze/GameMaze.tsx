@@ -140,6 +140,7 @@ export function GameMaze() {
         style={{
           touchAction: 'none',
           gridTemplateColumns: `repeat(${puzzle.size}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${puzzle.size}, minmax(0, 1fr))`,
         }}
         className="grid aspect-square w-full max-w-[min(88vw,420px)] rounded-3xl overflow-hidden shadow-lg border-4 border-amber-300 bg-white select-none"
       >
@@ -155,17 +156,25 @@ export function GameMaze() {
                 onClick={() => {
                   if (isAdjacent) moveBy(r - pos.row, c - pos.col);
                 }}
-                className={`flex items-center justify-center ${
+                className={`relative h-full w-full min-h-0 min-w-0 overflow-hidden ${
                   cell === 1 ? theme.wall : theme.path
                 } ${isAdjacent ? 'cursor-pointer hover:brightness-95' : ''}`}
               >
                 {isHero && (
-                  <span className={puzzle.size === 9 ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}>
+                  <span
+                    className={`pointer-events-none absolute inset-0 flex items-center justify-center leading-none ${
+                      puzzle.size === 9 ? 'text-2xl sm:text-3xl' : 'text-base sm:text-xl'
+                    }`}
+                  >
                     {theme.hero}
                   </span>
                 )}
                 {!isHero && isGoal && (
-                  <span className={puzzle.size === 9 ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}>
+                  <span
+                    className={`pointer-events-none absolute inset-0 flex items-center justify-center leading-none ${
+                      puzzle.size === 9 ? 'text-2xl sm:text-3xl' : 'text-base sm:text-xl'
+                    }`}
+                  >
                     {theme.goal}
                   </span>
                 )}

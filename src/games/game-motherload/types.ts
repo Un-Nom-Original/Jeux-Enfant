@@ -65,6 +65,7 @@ export interface PlayerState {
   cargo: Partial<Record<MineralKind, number>>;
   upgrades: Upgrades;
   teleporters: number;
+  robots: number;
   maxDepth: number;
   foundCore: boolean;
   facing: -1 | 1;

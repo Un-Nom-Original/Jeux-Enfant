@@ -1,8 +1,10 @@
 import type { GradeLevel } from '../../context/GradeContext';
 import {
   isMineral,
+  MAX_ROBOTS,
   MINERAL_LIST,
   MINERALS,
+  ROBOT_COSTS,
   SURFACE_ROW,
   TELEPORTER_COST,
   UPGRADE_DEFS,
@@ -76,6 +78,7 @@ export function createInitialPlayer(grade: GradeLevel): PlayerState {
     cargo: {},
     upgrades,
     teleporters: grade === '1re' ? 2 : 1,
+    robots: 0,
     maxDepth: 0,
     foundCore: false,
     facing: 1,
@@ -210,5 +213,22 @@ export function buyTeleporter(player: PlayerState, grade: GradeLevel): PlayerSta
     ...player,
     money: player.money - cost,
     teleporters: player.teleporters + 1,
+  };
+}
+
+export function getRobotCost(currentRobots: number, grade: GradeLevel): number | null {
+  if (currentRobots >= MAX_ROBOTS) return null;
+  const base = ROBOT_COSTS[currentRobots];
+  return grade === '1re' ? Math.round(base * 0.7) : base;
+}
+
+export function buyHelperRobot(player: PlayerState, grade: GradeLevel): PlayerState | null {
+  const current = player.robots ?? 0;
+  const cost = getRobotCost(current, grade);
+  if (cost === null || player.money < cost) return null;
+  return {
+    ...player,
+    money: player.money - cost,
+    robots: current + 1,
   };
 }
